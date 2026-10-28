@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GB Balancing Costs</title>
+<meta name="description" content="Daily cost of balancing Great Britain's electricity grid, from NESO's published data, updated automatically.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f6f2; --panel:#ffffff; --fg:#1c1b19; --muted:#6b6862; --line:#e4e1da;
+  --grid:#ecebe6; --axis:#c9c5bc; --ref:#8d8980;
+  --c0:#c4561c; --c1:#2f6f9f; --c2:#8a8f3a; --mutedline:#b9b5ac;
+  --bad:#b3261e; --ok:#2e7d32; --pop:#ffffff; --shadow:0 4px 18px rgba(0,0,0,.08);
+  --sans:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --serif:"Source Serif 4",Georgia,serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#141413; --panel:#1d1d1b; --fg:#ecebe6; --muted:#a19e96; --line:#2f2e2b;
+    --grid:#292826; --axis:#4a4844; --ref:#77746d;
+    --c0:#e8794a; --c1:#6aa6d6; --c2:#b8bd63; --mutedline:#5a5852;
+    --bad:#ef7a72; --ok:#7cc684; --pop:#252523; --shadow:0 4px 18px rgba(0,0,0,.45);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141413; --panel:#1d1d1b; --fg:#ecebe6; --muted:#a19e96; --line:#2f2e2b;
+  --grid:#292826; --axis:#4a4844; --ref:#77746d;
+  --c0:#e8794a; --c1:#6aa6d6; --c2:#b8bd63; --mutedline:#5a5852;
+  --bad:#ef7a72; --ok:#7cc684; --pop:#252523; --shadow:0 4px 18px rgba(0,0,0,.45);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:40px 24px 64px;display:flex;flex-direction:column;gap:20px}
+@media (max-width:600px){.wrap{padding:24px 16px 48px}}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(28px,4vw,40px);line-height:1.15;margin:0}
+.lede{color:var(--muted);margin:10px 0 0;max-width:62em}
+.lede b{color:var(--fg);font-weight:500;font-variant-numeric:tabular-nums}
+.fresh{font-size:13px;color:var(--muted);margin-top:8px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+.fresh .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);margin-right:6px;vertical-align:1px}
+.fresh .dot.stale{background:#c99a1a}
+.fresh a{color:inherit}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;min-width:0}
+.lbl{font-size:13px;color:var(--muted)}
+.big{font-family:var(--serif);font-size:32px;line-height:1.15;margin-top:4px;font-variant-numeric:tabular-nums;min-height:1.15em}
+.sub{font-size:13px;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums}
+.sub.up{color:var(--bad)} .sub.down{color:var(--ok)}
+h2{font-size:17px;font-weight:500;margin:0}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.note{font-size:13px;color:var(--muted);margin:4px 0 14px;line-height:1.45}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{all:unset;cursor:pointer;font-size:13px;padding:5px 11px;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--fg);color:var(--bg)}
+.seg button:focus-visible{outline:2px solid var(--c1);outline-offset:-2px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-bottom:8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px}
+.sw.line{height:2px;width:14px;border-radius:1px}
+.chart{position:relative;min-height:300px}
+.chart svg{display:block;overflow:visible}
+.tip{position:absolute;pointer-events:none;background:var(--pop);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);padding:6px 10px;font-size:13px;white-space:nowrap;z-index:2;font-variant-numeric:tabular-nums;display:none}
+.tip .d{color:var(--muted);margin-bottom:2px}
+.tip .r{display:flex;align-items:center;gap:6px}
+.tbox{max-height:30rem;overflow:auto;border-top:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{position:sticky;top:0;background:var(--panel);font-weight:500;color:var(--muted);z-index:1}
+th button{all:unset;cursor:pointer}
+th button:focus-visible{outline:2px solid var(--c1)}
+th[aria-sort=ascending] button::after{content:" ▲";font-size:10px}
+th[aria-sort=descending] button::after{content:" ▼";font-size:10px}
+tr.partial td{color:var(--muted)}
+.tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.search{flex:0 1 220px;min-width:0;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit;font-size:13px}
+.btn{font:inherit;font-size:13px;color:var(--fg);text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:6px 11px;background:var(--panel)}
+.btn:hover{border-color:var(--axis)}
+.skel{background:linear-gradient(90deg,var(--grid),var(--line),var(--grid));background-size:200% 100%;animation:sh 1.4s infinite;border-radius:6px;color:transparent!important}
+@keyframes sh{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.skel{animation:none}}
+.err{display:none;background:var(--panel);border:1px solid var(--bad);color:var(--bad);border-radius:10px;padding:14px 18px;font-size:14px}
+footer{font-size:13px;color:var(--muted);line-height:1.6;border-top:1px solid var(--line);padding-top:18px;margin-top:8px}
+footer a{color:inherit}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>The daily cost of balancing GB's grid</h1>
+    <p class="lede" id="lede">Loading NESO's latest figures…</p>
+    <div class="fresh" id="fresh"></div>
+  </header>
+
+  <div class="err" id="err">The data file couldn't be loaded. Try refreshing the page.</div>
+
+  <section class="tiles" aria-label="Headline figures">
+    <div class="card"><div class="lbl">Latest 365 days</div><div class="big skel" id="t-last">£0.0bn</div><div class="sub" id="t-chg">&nbsp;</div></div>
+    <div class="card"><div class="lbl">Latest 30 days</div><div class="big skel" id="t-30">£000m</div><div class="sub" id="t-30s">&nbsp;</div></div>
+    <div class="card"><div class="lbl">Average per day, whole period</div><div class="big skel" id="t-avg">£0.0m</div><div class="sub" id="t-avgs">&nbsp;</div></div>
+    <div class="card"><div class="lbl">Most expensive day</div><div class="big skel" id="t-peak">£00.0m</div><div class="sub" id="t-peakd">&nbsp;</div></div>
+  </section>
+
+  <section class="card" id="daily">
+    <div class="head">
+      <div><h2>Daily cost</h2><p class="note">Each day's total across all categories, with a 30-day trailing average.</p></div>
+      <div class="seg" role="group" aria-label="Date range" id="range">
+        <button data-r="90">3M</button><button data-r="365">1Y</button><button data-r="1095">3Y</button><button data-r="0" aria-pressed="true">All</button>
+      </div>
+    </div>
+    <div class="legend"><span><i class="sw line" style="background:var(--mutedline)"></i>Daily total</span><span><i class="sw line" style="background:var(--c0)"></i>30-day average</span></div>
+    <div class="chart" id="dailyChart"></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card" id="monthly">
+      <h2>Monthly cost by type</h2>
+      <p class="note">Calendar-month totals; the latest month is part-month. "Other" is energy imbalance, frequency control and other actions, which can net negative.</p>
+      <div class="legend"><span><i class="sw" style="background:var(--c0)"></i>Constraints</span><span><i class="sw" style="background:var(--c1)"></i>Reserve</span><span><i class="sw" style="background:var(--c2)"></i>Other</span></div>
+      <div class="chart" id="monthlyChart"></div>
+    </section>
+
+    <section class="card" id="fy">
+      <h2>By financial year</h2>
+      <p class="note">April to March. The current year is year to date.</p>
+      <div class="tbox">
+        <table><thead><tr><th>Year</th><th>Days</th><th>Total</th><th>Constraints</th><th>Constraint share</th><th>Avg / day</th></tr></thead>
+        <tbody id="fyRows"></tbody></table>
+      </div>
+    </section>
+  </div>
+
+  <section class="card" id="every-day">
+    <h2>Every day</h2>
+    <p class="note">In pounds, by NESO cost category. Settlement periods is the number of half-hours NESO reported (48 normally, 46 or 50 on clock-change days); greyed rows are missing a half-hour, so their totals may be slightly low.</p>
+    <div class="tools">
+      <input class="search" id="q" type="search" placeholder="Search dates, e.g. 2022-07" aria-label="Search dates">
+      <a class="btn" href="data/daily.csv" download>Download CSV</a>
+    </div>
+    <div class="tbox">
+      <table id="dt"><thead><tr>
+        <th data-col="date"><button>Date</button></th>
+        <th data-col="total"><button>Total</button></th>
+        <th data-col="constraints"><button>Constraints</button></th>
+        <th data-col="positive_reserve"><button>Positive reserve</button></th>
+        <th data-col="negative_reserve"><button>Negative reserve</button></th>
+        <th data-col="energy_imbalance"><button>Energy imbalance</button></th>
+        <th data-col="frequency_control"><button>Frequency control</button></th>
+        <th data-col="other"><button>Other</button></th>
+        <th data-col="settlement_periods"><button>Settlement periods</button></th>
+      </tr></thead><tbody id="dailyRows"></tbody></table>
+    </div>
+  </section>
+
+  <footer>
+    Source: <a href="https://www.neso.energy/data-portal/daily-balancing-costs-balancing-services-use-system" rel="noopener">NESO Data Portal, Daily Balancing Services Use of System (BSUoS) Cost Data</a>, half-hourly figures summed to days. NESO adds new days roughly weekly and revises recent months as costs are reconciled; this site checks for new data every morning. Figures are NESO's outturn balancing costs and are not adjusted for inflation. Contains data from the National Energy System Operator (NESO); see the dataset page for its licence terms.
+  </footer>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+(function(){
+  const CATS=['constraints','positive_reserve','negative_reserve','energy_imbalance','frequency_control','other'];
+  const $=id=>document.getElementById(id);
+  const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  const gbp=v=>{const a=Math.abs(v),s=v<0?'−':'';
+    if(a>=1e9)return s+'£'+(a/1e9).toFixed(2)+'bn';
+    if(a>=1e6)return s+'£'+(a/1e6).toFixed(1)+'m';
+    if(a>=1e3)return s+'£'+(a/1e3).toFixed(0)+'k';
+    return s+'£'+a.toFixed(0);};
+  const gbpFull=v=>(v<0?'−£':'£')+d3.format(',')(Math.abs(Math.round(v)));
+  const pct=d3.format('.0%');
+  const fmtDay=d3.utcFormat('%-d %b %Y');
+  const parse=s=>new Date(s+'T00:00:00Z');
+  const ytick=v=>v===0?'£0':(v<0?'−£':'£')+d3.format('~')(Math.abs(v)/1e6)+'m';
+
+  let rows=[], roll=[], months=[], state={range:0,sort:{col:'date',dir:'descending'},q:''};
+
+  Promise.all([
+    d3.csv('data/daily.csv',d3.autoType),
+    fetch('data/meta.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).catch(()=>null)
+  ]).then(([data,meta])=>{
+    rows=data.map(r=>({...r,date:(r.date instanceof Date?d3.utcFormat('%Y-%m-%d')(r.date):String(r.date)),d:null}))
+      .map(r=>({...r,d:parse(r.date)})).sort((a,b)=>a.d-b.d);
+    // 30-day trailing mean
+    let s=0; roll=[];
+    rows.forEach((r,i)=>{s+=r.total;if(i>=30)s-=rows[i-30].total;if(i>=29)roll.push({d:r.d,v:s/30,date:r.date});});
+    // months
+    const m=d3.rollup(rows,v=>({constraints:d3.sum(v,r=>r.constraints),reserve:d3.sum(v,r=>r.positive_reserve+r.negative_reserve),
+      other:d3.sum(v,r=>r.energy_imbalance+r.frequency_control+r.other),total:d3.sum(v,r=>r.total),days:v.length}),r=>r.date.slice(0,7));
+    months=[...m].map(([k,v])=>({month:k,d:parse(k+'-01'),...v})).sort((a,b)=>a.d-b.d);
+    summary(meta); fyTable(); drawDaily(); drawMonthly(); dailyTable();
+  }).catch(e=>{console.error(e);$('err').style.display='block';$('lede').textContent='';});
+
+  function setTile(id,text){const el=$(id);el.textContent=text;el.classList.remove('skel');}
+
+  function summary(meta){
+    const n=rows.length,total=d3.sum(rows,r=>r.total),cons=d3.sum(rows,r=>r.constraints);
+    const last=d3.sum(rows.slice(-365),r=>r.total),prior=d3.sum(rows.slice(-730,-365),r=>r.total),chg=last/prior-1;
+    const l30=d3.sum(rows.slice(-30),r=>r.total),p30=d3.sum(rows.slice(-395,-365),r=>r.total),c30=l30/p30-1;
+    const peak=rows.reduce((a,b)=>b.total>a.total?b:a);
+    const first=rows[0],latest=rows[n-1];
+    const lede=$('lede'); lede.textContent='';
+    const b=t=>{const x=document.createElement('b');x.textContent=t;return x;};
+    lede.append('Across ',b(d3.format(',')(n)),' days from ',b(fmtDay(first.d)),' to ',b(fmtDay(latest.d)),
+      ', NESO spent ',b(gbp(total)),' balancing the GB grid, about ',b(gbp(total/n)),' a day. Constraint payments were ',
+      b(pct(cons/total)),' of it, and the latest 365 days cost ',b(pct(Math.abs(chg))+(chg>=0?' more':' less')),' than the 365 before.');
+    setTile('t-last',gbp(last));
+    const tc=$('t-chg');tc.textContent=(chg>=0?'+':'−')+pct(Math.abs(chg))+' vs the 365 days before';tc.classList.add(chg>0?'up':'down');
+    setTile('t-30',gbp(l30));
+    const t3=$('t-30s');t3.textContent=(c30>=0?'+':'−')+pct(Math.abs(c30))+' vs same 30 days a year earlier';t3.classList.add(c30>0?'up':'down');
+    setTile('t-avg',gbp(total/n)); $('t-avgs').textContent='Since '+fmtDay(first.d);
+    setTile('t-peak',gbp(peak.total)); $('t-peakd').textContent=fmtDay(peak.d);
+    // freshness
+    const f=$('fresh'); f.textContent='';
+    const ageDays=Math.round((Date.now()-latest.d.getTime())/864e5);
+    const s1=document.createElement('span'); const dot=document.createElement('i'); dot.className='dot'+(ageDays>14?' stale':'');
+    s1.append(dot,'NESO data to '+fmtDay(latest.d));
+    f.append(s1);
+    if(meta&&meta.updated_at){const s2=document.createElement('span');s2.textContent='Last new data '+d3.utcFormat('%-d %b %Y, %H:%M UTC')(new Date(meta.updated_at));f.append(s2);}
+    const s3=document.createElement('span');s3.textContent='Checked daily';f.append(s3);
+  }
+
+  function fyTable(){
+    const g=d3.rollup(rows,v=>({days:v.length,total:d3.sum(v,r=>r.total),cons:d3.sum(v,r=>r.constraints)}),
+      r=>{const y=r.d.getUTCFullYear(),m=r.d.getUTCMonth()+1,s=m>=4?y:y-1;return s+'-'+String((s+1)%100).padStart(2,'0');});
+    const tb=$('fyRows'); tb.textContent='';
+    [...g].sort((a,b)=>a[0]<b[0]?-1:1).forEach(([k,o])=>{
+      const tr=document.createElement('tr');
+      [k,d3.format(',')(o.days),gbp(o.total),gbp(o.cons),pct(o.cons/o.total),gbp(o.total/o.days)].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.append(td);});
+      tb.append(tr);
+    });
+  }
+
+  function measure(svg,labels){const t=svg.append('text').style('font-size','12px');let w=0;for(const l of labels){t.text(l);w=Math.max(w,t.node().getComputedTextLength());}t.remove();return w;}
+  function styleAxis(g){g.attr('font-size',null).attr('font-family',null);g.selectAll('text').attr('fill',css('--muted')).style('font-size','12px');
+    g.selectAll('line').attr('stroke',css('--axis'));g.select('.domain').attr('stroke',css('--axis'));}
+  function placeTip(tip,el,x,W){tip.style.display='block';const sc=el.clientWidth/W,tw=tip.offsetWidth;let l=x*sc+12;if(l+tw>el.clientWidth)l=x*sc-tw-12;tip.style.left=Math.max(0,l)+'px';tip.style.top='6px';}
+  function tipRow(tip,color,text,isLine){const r=document.createElement('div');r.className='r';if(color){const s=document.createElement('i');s.className='sw'+(isLine?' line':'');s.style.background=color;r.append(s);}r.append(text);tip.append(r);}
+
+  function drawDaily(){
+    const el=$('dailyChart'); el.textContent='';
+    if(!rows.length)return;
+    const from=state.range?d3.utcDay.offset(rows[rows.length-1].d,-state.range+1):rows[0].d;
+    const rs=rows.filter(r=>r.d>=from), rl=roll.filter(r=>r.d>=from);
+    const rmap=new Map(roll.map(r=>[r.date,r.v]));
+    const W=Math.max(300,el.clientWidth),H=320;
+    const svg=d3.select(el).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`).attr('role','img')
+      .attr('aria-label','Daily balancing cost with 30-day average');
+    const y=d3.scaleLinear([Math.min(0,d3.min(rs,r=>r.total)),d3.max(rs,r=>r.total)],[0,1]).nice();
+    const yt=y.ticks(5);
+    const ml=measure(svg,yt.map(ytick))+10,mr=8,mt=8,mb=26;
+    y.range([H-mb,mt]);
+    const x=d3.scaleUtc([rs[0].d,rs[rs.length-1].d],[ml,W-mr]);
+    svg.append('g').selectAll('line').data(yt).join('line').attr('x1',ml).attr('x2',W-mr).attr('y1',d=>y(d)).attr('y2',d=>y(d)).attr('stroke',d=>d===0?css('--axis'):css('--grid'));
+    styleAxis(svg.append('g').attr('transform',`translate(${ml},0)`).call(d3.axisLeft(y).tickValues(yt).tickFormat(ytick).tickSize(0).tickPadding(6)).call(g=>g.select('.domain').remove()));
+    const span=state.range||rows.length;
+    const xa=span<=120?d3.axisBottom(x).ticks(d3.utcMonth.every(1)).tickFormat(d3.utcFormat('%b %Y'))
+      :span<=400?d3.axisBottom(x).ticks(d3.utcMonth.every(W<520?3:2)).tickFormat(d3.utcFormat('%b %y'))
+      :d3.axisBottom(x).ticks(d3.utcYear.every(W<520?2:1)).tickFormat(d3.utcFormat('%Y'));
+    styleAxis(svg.append('g').attr('transform',`translate(0,${H-mb})`).call(xa.tickSizeOuter(0)));
+    svg.append('path').datum(rs).attr('fill','none').attr('stroke',css('--mutedline')).attr('stroke-width',span<=400?1.5:1)
+      .attr('d',d3.line().x(r=>x(r.d)).y(r=>y(r.total)));
+    svg.append('path').datum(rl).attr('fill','none').attr('stroke',css('--c0')).attr('stroke-width',2).attr('stroke-linejoin','round').attr('stroke-linecap','round')
+      .attr('d',d3.line().x(r=>x(r.d)).y(r=>y(r.v)));
+    const rule=svg.append('line').attr('y1',mt).attr('y2',H-mb).attr('stroke',css('--ref')).style('display','none');
+    const dot=svg.append('circle').attr('r',3.5).attr('fill',css('--fg')).style('display','none');
+    const tip=document.createElement('div');tip.className='tip';el.append(tip);
+    const bis=d3.bisector(r=>r.d).center;
+    svg.append('rect').attr('x',ml).attr('y',mt).attr('width',W-ml-mr).attr('height',H-mt-mb).attr('fill','transparent')
+      .on('pointermove',ev=>{
+        const [px]=d3.pointer(ev);const r=rs[bis(rs,x.invert(px))];const sx=x(r.d);
+        rule.attr('x1',sx).attr('x2',sx).style('display',null);dot.attr('cx',sx).attr('cy',y(r.total)).style('display',null);
+        tip.textContent='';const d=document.createElement('div');d.className='d';d.textContent=fmtDay(r.d);tip.append(d);
+        tipRow(tip,css('--mutedline'),'Daily '+gbp(r.total),true);
+        const av=rmap.get(r.date);if(av!=null)tipRow(tip,css('--c0'),'30-day avg '+gbp(av),true);
+        tipRow(tip,null,'Constraints '+gbp(r.constraints));
+        placeTip(tip,el,sx,W);
+      })
+      .on('pointerleave',()=>{rule.style('display','none');dot.style('display','none');tip.style.display='none';});
+  }
+
+  function drawMonthly(){
+    const el=$('monthlyChart'); el.textContent='';
+    if(!months.length)return;
+    const keys=['constraints','reserve','other'],names=['Constraints','Reserve','Other'],cols=[css('--c0'),css('--c1'),css('--c2')];
+    const series=d3.stack().keys(keys).offset(d3.stackOffsetDiverging)(months);
+    const W=Math.max(300,el.clientWidth),H=300;
+    const svg=d3.select(el).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`).attr('role','img').attr('aria-label','Monthly balancing cost by type');
+    const y=d3.scaleLinear([d3.min(series,s=>d3.min(s,d=>d[0])),d3.max(series,s=>d3.max(s,d=>d[1]))],[0,1]).nice();
+    const yt=y.ticks(5);
+    const ml=measure(svg,yt.map(ytick))+10,mr=4,mt=8,mb=26;
+    y.range([H-mb,mt]);
+    const x=d3.scaleBand(months.map(r=>r.month),[ml,W-mr]).paddingInner(0.2);
+    svg.append('g').selectAll('line').data(yt).join('line').attr('x1',ml).attr('x2',W-mr).attr('y1',d=>y(d)).attr('y2',d=>y(d)).attr('stroke',d=>d===0?css('--axis'):css('--grid'));
+    styleAxis(svg.append('g').attr('transform',`translate(${ml},0)`).call(d3.axisLeft(y).tickValues(yt).tickFormat(ytick).tickSize(0).tickPadding(6)).call(g=>g.select('.domain').remove()));
+    const jan=months.filter(r=>r.month.endsWith('-01')&&(W>=480||+r.month.slice(0,4)%2===0)).map(r=>r.month);
+    styleAxis(svg.append('g').attr('transform',`translate(0,${H-mb})`).call(d3.axisBottom(x).tickValues(jan).tickFormat(k=>k.slice(0,4)).tickSizeOuter(0)).call(g=>g.select('.domain').remove()));
+    const bw=Math.min(32,x.bandwidth()),off=(x.bandwidth()-bw)/2;
+    svg.append('g').selectAll('g').data(series).join('g').attr('fill',(s,i)=>cols[i])
+      .selectAll('rect').data(s=>s).join('rect').attr('x',d=>x(d.data.month)+off).attr('width',bw)
+      .attr('y',d=>y(Math.max(d[0],d[1]))).attr('height',d=>Math.abs(y(d[0])-y(d[1]))).attr('rx',Math.min(2,bw/2));
+    const tip=document.createElement('div');tip.className='tip';el.append(tip);
+    svg.append('g').selectAll('rect').data(months).join('rect').attr('x',r=>x(r.month)).attr('width',x.step()).attr('y',mt).attr('height',H-mt-mb).attr('fill','transparent')
+      .on('pointerenter',(ev,r)=>{
+        tip.textContent='';const d=document.createElement('div');d.className='d';
+        d.textContent=d3.utcFormat('%B %Y')(r.d)+' · '+gbp(r.total)+(r.days<d3.utcDay.count(r.d,d3.utcMonth.offset(r.d,1))?' (part month)':'');tip.append(d);
+        keys.forEach((k,i)=>tipRow(tip,cols[i],names[i]+' '+gbp(r[k])));
+        placeTip(tip,el,x(r.month)+x.step(),W);
+      }).on('pointerleave',()=>{tip.style.display='none';});
+  }
+
+  function syncSort(){document.querySelectorAll('#dt th[data-col]').forEach(th=>th.setAttribute('aria-sort',th.dataset.col===state.sort.col?state.sort.dir:'none'));}
+  function dailyTable(){
+    syncSort();
+    const tb=$('dailyRows');tb.textContent='';
+    const {col,dir}=state.sort,q=state.q;
+    const key=col==='date'?(r=>r.date):(r=>+r[col]);
+    const rs=rows.filter(r=>!q||r.date.includes(q)).slice().sort((a,b)=>{const x=key(a),y=key(b);return (x<y?-1:x>y?1:0)*(dir==='ascending'?1:-1);});
+    const frag=document.createDocumentFragment();
+    for(const r of rs){
+      const tr=document.createElement('tr');
+      if(r.settlement_periods<48&&!(r.settlement_periods===46&&r.date.slice(5,7)==='03'))tr.className='partial';
+      for(const c of ['date','total',...CATS,'settlement_periods']){const td=document.createElement('td');td.textContent=c==='date'?r.date:c==='settlement_periods'?r[c]:gbpFull(r[c]);tr.append(td);}
+      frag.append(tr);
+    }
+    tb.append(frag);
+  }
+
+  document.querySelectorAll('#dt th[data-col] button').forEach(b=>b.addEventListener('click',()=>{
+    const c=b.closest('th').dataset.col;
+    if(state.sort.col===c)state.sort.dir=state.sort.dir==='descending'?'ascending':'descending';
+    else state.sort={col:c,dir:c==='date'?'ascending':'descending'};
+    dailyTable();
+  }));
+  $('q').addEventListener('input',e=>{state.q=e.target.value.trim();dailyTable();});
+  document.querySelectorAll('#range button').forEach(b=>b.addEventListener('click',()=>{
+    state.range=+b.dataset.r;
+    document.querySelectorAll('#range button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));
+    drawDaily();
+  }));
+  let lastW=0;
+  new ResizeObserver(()=>{const w=document.body.clientWidth;if(w!==lastW){lastW=w;if(rows.length){drawDaily();drawMonthly();}}}).observe(document.body);
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(rows.length){drawDaily();drawMonthly();}});
+})();
+</script>
+</body>
+</html>

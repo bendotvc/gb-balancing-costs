@@ -1,0 +1,16 @@
+{
+  "source": "NESO Data Portal \u2014 Daily Balancing Services Use of System (BSUoS) Cost Data",
+  "source_url": "https://www.neso.energy/data-portal/daily-balancing-costs-balancing-services-use-system",
+  "first_date": "2021-04-01",
+  "latest_date": "2026-10-21",
+  "days": 2030,
+  "files": [
+    "Daily Balancing Costs 2021-2022",
+    "Daily Balancing Costs 2022-2023",
+    "Daily Balancing Costs 2023-2024",
+    "Daily Balancing Costs 2024-2025",
+    "Daily Balancing Costs 2025-2026",
+    "Daily Balancing Costs 2026-2027"
+  ],
+  "updated_at": "2026-10-28T10:38:25Z"
+}

@@ -1,0 +1,59 @@
+name: Update NESO data and publish
+
+on:
+  schedule:
+    - cron: "17 7 * * *"   # every day at 07:17 UTC
+  workflow_dispatch:        # "Run workflow" button for an immediate refresh
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Pull latest daily costs from NESO
+        # A NESO outage shouldn't take the site down: on failure the
+        # previous data stays and the site is republished as it was.
+        continue-on-error: true
+        env:
+          START_FY: "2021"   # first financial year to include (NESO data goes back to 2017)
+        run: python scripts/update.py
+
+      - name: Commit new data
+        run: |
+          git add -A data/ 2>/dev/null || true
+          if git diff --cached --quiet -- data/; then
+            echo "No new NESO data."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Update NESO daily balancing costs to $(python -c 'import json;print(json.load(open("data/meta.json"))["latest_date"])')"
+            git push
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
